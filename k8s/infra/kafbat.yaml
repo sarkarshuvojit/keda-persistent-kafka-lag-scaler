@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafbat
+  labels:
+    app: kafbat
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+  selector:
+    app: kafbat
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafbat
+  labels:
+    app: kafbat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafbat
+  template:
+    metadata:
+      labels:
+        app: kafbat
+    spec:
+      containers:
+        - name: kafbat
+          image: ghcr.io/kafbat/kafka-ui:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DYNAMIC_CONFIG_ENABLED
+              value: "true"
+            - name: KAFKA_CLUSTERS_0_NAME
+              value: "local"
+            - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+              value: "kafka.default.svc.cluster.local:9092"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi

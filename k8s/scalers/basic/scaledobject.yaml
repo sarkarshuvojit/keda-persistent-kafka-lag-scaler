@@ -1,0 +1,21 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: kafka-consumer-scaler
+  labels:
+    app: kafka-consumer
+spec:
+  scaleTargetRef:
+    name: kafka-consumer
+  pollingInterval: 15
+  cooldownPeriod: 30
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.default.svc.cluster.local:9092
+        consumerGroup: sample-consumer-group
+        topic: test-topic
+        lagThreshold: "10"
+        offsetResetPolicy: latest

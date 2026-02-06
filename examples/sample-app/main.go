@@ -87,15 +87,17 @@ func runConsumer() {
 			}
 
 			messageCount++
+			/*
 			log.Printf("[Message %d] Received from partition %d at offset %d",
 				messageCount, msg.Partition, msg.Offset)
 			log.Printf("[Message %d] Key: %s, Value: %s",
 				messageCount, string(msg.Key), string(msg.Value))
+			*/
 
-			log.Printf("[Message %d] Processing message (will take 100 mseconds)...", messageCount)
+			//log.Printf("[Message %d] Processing message (will take 100 mseconds)...", messageCount)
 			time.Sleep(100 * time.Millisecond)
 
-			log.Printf("[Message %d] Processing complete, message acknowledged (latency: %s)", messageCount, time.Since(msg.Time))
+			log.Printf("[Message %d] Processing complete, message acknowledged (latency: %d)", messageCount, time.Since(msg.Time).Milliseconds())
 		}
 	}
 }

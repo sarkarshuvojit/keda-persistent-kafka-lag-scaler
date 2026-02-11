@@ -8,14 +8,14 @@ spec:
   scaleTargetRef:
     name: kafka-consumer
   pollingInterval: 10
-  cooldownPeriod: 10
+  cooldownPeriod: 30
   minReplicaCount: 1
   maxReplicaCount: 5
   triggers:
-    - type: kafka
+    - type: external
       metadata:
-        bootstrapServers: kafka.default.svc.cluster.local:9092
-        consumerGroup: sample-consumer-group
+        scalerAddress: lag-scaler.default.svc.cluster.local:50051
         topic: test-topic
-        lagThreshold: "10"
-        offsetResetPolicy: latest
+        consumerGroup: sample-consumer-group
+        lagThreshold: "500"
+        sustainSeconds: "120"

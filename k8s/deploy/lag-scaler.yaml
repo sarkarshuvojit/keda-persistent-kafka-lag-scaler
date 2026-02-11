@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lag-scaler
+  labels:
+    app: lag-scaler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lag-scaler
+  template:
+    metadata:
+      labels:
+        app: lag-scaler
+    spec:
+      containers:
+        - name: lag-scaler
+          image: kpkls-scaler:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50051
+          env:
+            - name: KAFKA_BROKERS
+              value: "kafka.default.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "test-topic"
+            - name: KAFKA_GROUP_ID
+              value: "sample-consumer-group"
+            - name: LAG_THRESHOLD
+              value: "500"
+            - name: SUSTAIN_SECONDS
+              value: "120"
+            - name: SAMPLING_INTERVAL
+              value: "10"
+            - name: WINDOW_SIZE
+              value: "30"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lag-scaler
+  labels:
+    app: lag-scaler
+spec:
+  type: ClusterIP
+  selector:
+    app: lag-scaler
+  ports:
+    - port: 50051
+      targetPort: 50051
+      protocol: TCP

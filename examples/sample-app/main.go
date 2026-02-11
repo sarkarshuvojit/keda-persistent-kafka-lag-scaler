@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jamiealquiza/tachymeter"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -62,13 +63,15 @@ func runConsumer() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	t := tachymeter.New(&tachymeter.Config{Size: 10000})
+
 	go func() {
 		<-sigChan
 		log.Println("Received shutdown signal, stopping consumer...")
+		log.Printf("\n=== Latency Metrics ===\n%s\n", t.Calc())
 		cancel()
 	}()
 
-	messageCount := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -86,18 +89,11 @@ func runConsumer() {
 				continue
 			}
 
-			messageCount++
-			/*
-			log.Printf("[Message %d] Received from partition %d at offset %d",
-				messageCount, msg.Partition, msg.Offset)
-			log.Printf("[Message %d] Key: %s, Value: %s",
-				messageCount, string(msg.Key), string(msg.Value))
-			*/
-
-			//log.Printf("[Message %d] Processing message (will take 100 mseconds)...", messageCount)
 			time.Sleep(100 * time.Millisecond)
-
-			log.Printf("[Message %d] Processing complete, message acknowledged (latency: %d)", messageCount, time.Since(msg.Time).Milliseconds())
+			latency := time.Since(msg.Time)
+			t.AddTime(latency)
+			log.Printf("[part: %d, offset: %d]message acked (latency: %.2f)",
+				msg.Partition, msg.Offset, latency)
 		}
 	}
 }
@@ -184,7 +180,7 @@ func produceHandler(writer *kafka.Writer) http.HandlerFunc {
 			}
 			messages[i] = kafka.Message{
 				Key:   []byte(key),
-				Value: []byte(fmt.Sprintf(`{"seq":%d,"payload":"%s"}`, i, payload)),
+				Value: fmt.Appendf(nil, `{"seq":%d,"payload":"%s"}`, i, payload),
 			}
 		}
 

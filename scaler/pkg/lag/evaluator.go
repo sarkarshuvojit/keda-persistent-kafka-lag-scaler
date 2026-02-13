@@ -66,7 +66,7 @@ func hasPersistentLag(samples []LagSample, threshold int64, sustainDuration time
 	inStretch := false
 
 	for _, s := range samples {
-		if s.Lag > threshold {
+		if s.Lag >= threshold {
 			if !inStretch {
 				stretchStart = s.Timestamp
 				inStretch = true

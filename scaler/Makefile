@@ -10,7 +10,7 @@ proto-gen:
 
 .PHONY: build
 build:
-	eval $$(minikube docker-env) && docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
 
 .PHONY: test
 test:

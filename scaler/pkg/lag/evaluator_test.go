@@ -116,6 +116,27 @@ func TestEvaluatePersistence_MultiPartition(t *testing.T) {
 	}
 }
 
+func TestEvaluatePersistence_LagAtExactThreshold(t *testing.T) {
+	now := time.Now()
+	// Lag == threshold should count (>= not >)
+	samples := makeSamples(0, now, 10*time.Second, 13, 500) // lag=500, threshold=500
+
+	result := EvaluatePersistence(samples, 500, 2*time.Minute)
+	if !result.Persistent {
+		t.Error("expected persistent when lag equals threshold for sustained period")
+	}
+}
+
+func TestEvaluatePersistence_LagJustBelowThreshold(t *testing.T) {
+	now := time.Now()
+	samples := makeSamples(0, now, 10*time.Second, 13, 499) // lag=499, threshold=500
+
+	result := EvaluatePersistence(samples, 500, 2*time.Minute)
+	if result.Persistent {
+		t.Error("expected not persistent when lag is just below threshold")
+	}
+}
+
 func TestEvaluatePersistence_TotalLagFromLatest(t *testing.T) {
 	now := time.Now()
 	samples := []LagSample{

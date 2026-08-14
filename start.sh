@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # Stands up the full example environment on minikube: Kafka, kafbat UI,
-# Prometheus, Perses, the sample producer/consumer, and the persistent lag
-# scaler wired to KEDA. See scaler/README.md for the manual step-by-step
-# this script automates.
+# Prometheus, Perses, Grafana, the sample producer/consumer, and the
+# persistent lag scaler wired to KEDA. See scaler/README.md for the manual
+# step-by-step this script automates.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,7 +38,7 @@ docker build -t kpkls:latest "$ROOT_DIR/examples/sample-app"
 echo "==> Building scaler image (kpkls-scaler:latest)"
 docker build -t kpkls-scaler:latest "$ROOT_DIR/scaler"
 
-echo "==> Applying infra (kafka, kafbat, prometheus, perses)"
+echo "==> Applying infra (kafka, kafbat, prometheus, perses, grafana)"
 kubectl apply -f "$ROOT_DIR/examples/k8s/infra/"
 
 echo "==> Waiting for Kafka to be ready"
@@ -69,6 +69,7 @@ echo "On the Docker driver, 'minikube service --url' opens a long-lived tunnel a
 echo "so open these in a separate terminal (each stays running to serve traffic):"
 echo "  minikube service kafbat --url"
 echo "  minikube service perses --url"
+echo "  minikube service grafana --url"
 echo
 echo "Generate load with:"
 echo "  kubectl run curl-load --rm -it --restart=Never --image=curlimages/curl -- \\"

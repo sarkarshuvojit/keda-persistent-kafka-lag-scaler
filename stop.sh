@@ -2,7 +2,8 @@
 #
 # Tears down everything start.sh stood up on minikube: the persistent
 # ScaledObject, consumer/producer/lag-scaler deployments, and infra
-# (kafka, kafbat UI, prometheus, perses). Leaves minikube itself running.
+# (kafka, kafbat UI, prometheus, perses, grafana). Leaves minikube itself
+# running.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +24,7 @@ kubectl delete \
   -f "$ROOT_DIR/examples/k8s/deploy/lag-scaler.yaml" \
   --ignore-not-found
 
-echo "==> Deleting infra (kafka, kafbat, prometheus, perses)"
+echo "==> Deleting infra (kafka, kafbat, prometheus, perses, grafana)"
 kubectl delete -f "$ROOT_DIR/examples/k8s/infra/" --ignore-not-found
 
 echo

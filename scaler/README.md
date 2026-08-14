@@ -7,7 +7,7 @@ A standalone gRPC service that implements [KEDA's External Scaler protocol](http
 - Go 1.24.4+
 - Docker (or minikube with `eval $(minikube docker-env)`)
 - A running Kubernetes cluster with [KEDA](https://keda.sh) installed
-- Kafka cluster accessible from the cluster (see `k8s/infra/kafka.yaml`)
+- Kafka cluster accessible from the cluster (see `examples/k8s/infra/kafka.yaml`)
 
 ## Configuration
 
@@ -67,15 +67,15 @@ kpkls-scaler   latest   abc123def456   5 seconds ago   15MB
 Make sure the infrastructure (Kafka) and the consumer app are already running:
 
 ```bash
-kubectl apply -f k8s/infra/
-kubectl apply -f k8s/deploy/deployment.yaml
-kubectl apply -f k8s/deploy/producer.yaml
+kubectl apply -f examples/k8s/infra/
+kubectl apply -f examples/k8s/deploy/deployment.yaml
+kubectl apply -f examples/k8s/deploy/producer.yaml
 ```
 
 Now deploy the scaler:
 
 ```bash
-kubectl apply -f k8s/deploy/lag-scaler.yaml
+kubectl apply -f examples/k8s/deploy/lag-scaler.yaml
 ```
 
 This creates a Deployment (1 replica) and a ClusterIP Service on port `50051`.
@@ -129,13 +129,13 @@ lag-scaler   ClusterIP   10.96.xxx.xxx   <none>        50051/TCP   30s
 First, make sure no other ScaledObject is targeting the same consumer deployment. If the basic (threshold-based) scaler is active, remove it first:
 
 ```bash
-kubectl delete -f k8s/scalers/basic/scaledobject.yaml --ignore-not-found
+kubectl delete -f examples/k8s/scalers/basic/scaledobject.yaml --ignore-not-found
 ```
 
 Then apply the persistent scaler:
 
 ```bash
-kubectl apply -f k8s/scalers/persistent/scaledobject.yaml
+kubectl apply -f examples/k8s/scalers/persistent/scaledobject.yaml
 ```
 
 ### Verify KEDA picked it up
@@ -191,7 +191,7 @@ You should see:
 kubectl get pods -l app=kafka-consumer -w
 ```
 
-You should see replicas stay at 1 during the initial burst, and only scale up after the sustain duration (default 2 minutes). Compare this with the threshold-based scaler (`k8s/scalers/basic/scaledobject.yaml`) which would scale up almost immediately.
+You should see replicas stay at 1 during the initial burst, and only scale up after the sustain duration (default 2 minutes). Compare this with the threshold-based scaler (`examples/k8s/scalers/basic/scaledobject.yaml`) which would scale up almost immediately.
 
 ### After lag clears
 

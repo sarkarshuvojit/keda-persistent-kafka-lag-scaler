@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -86,20 +85,19 @@ func (f *LagFetcher) FetchLag(ctx context.Context) ([]lag.LagSample, error) {
 	}
 
 	// Get committed consumer group offsets
-	coordinator, err := f.client.Metadata(ctx, &kafka.MetadataRequest{
-		Addr: f.client.Addr,
+	coordinatorResp, err := f.client.FindCoordinator(ctx, &kafka.FindCoordinatorRequest{
+		Addr:    f.client.Addr,
+		Key:     f.consumerGroup,
+		KeyType: kafka.CoordinatorKeyTypeConsumer,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("coordinator lookup failed: %w", err)
 	}
-
-	// Use first broker as coordinator address
-	var coordinatorAddr net.Addr
-	if len(coordinator.Brokers) > 0 {
-		coordinatorAddr = kafka.TCP(fmt.Sprintf("%s:%d", coordinator.Brokers[0].Host, coordinator.Brokers[0].Port))
-	} else {
-		coordinatorAddr = f.client.Addr
+	if coordinatorResp.Error != nil {
+		return nil, fmt.Errorf("coordinator lookup failed: %w", coordinatorResp.Error)
 	}
+
+	coordinatorAddr := kafka.TCP(fmt.Sprintf("%s:%d", coordinatorResp.Coordinator.Host, coordinatorResp.Coordinator.Port))
 
 	topicPartitions := make(map[string][]int)
 	for _, p := range partitions {
@@ -152,19 +150,19 @@ func (f *LagFetcher) FetchLag(ctx context.Context) ([]lag.LagSample, error) {
 
 // FetchConsumerGroupSize returns the number of active members in the consumer group.
 func (f *LagFetcher) FetchConsumerGroupSize(ctx context.Context) (int, error) {
-	coordinator, err := f.client.Metadata(ctx, &kafka.MetadataRequest{
-		Addr: f.client.Addr,
+	coordinatorResp, err := f.client.FindCoordinator(ctx, &kafka.FindCoordinatorRequest{
+		Addr:    f.client.Addr,
+		Key:     f.consumerGroup,
+		KeyType: kafka.CoordinatorKeyTypeConsumer,
 	})
 	if err != nil {
 		return 0, fmt.Errorf("coordinator lookup failed: %w", err)
 	}
-
-	var coordinatorAddr net.Addr
-	if len(coordinator.Brokers) > 0 {
-		coordinatorAddr = kafka.TCP(fmt.Sprintf("%s:%d", coordinator.Brokers[0].Host, coordinator.Brokers[0].Port))
-	} else {
-		coordinatorAddr = f.client.Addr
+	if coordinatorResp.Error != nil {
+		return 0, fmt.Errorf("coordinator lookup failed: %w", coordinatorResp.Error)
 	}
+
+	coordinatorAddr := kafka.TCP(fmt.Sprintf("%s:%d", coordinatorResp.Coordinator.Host, coordinatorResp.Coordinator.Port))
 
 	resp, err := f.client.DescribeGroups(ctx, &kafka.DescribeGroupsRequest{
 		Addr:     coordinatorAddr,

@@ -72,7 +72,10 @@ data:
               name: "Consumer Lag"
             plugin:
               kind: TimeSeriesChart
-              spec: {}
+              spec:
+                visual:
+                  connectNulls: true
+                  lineWidth: 1.5
             queries:
               - kind: TimeSeriesQuery
                 spec:
@@ -80,6 +83,29 @@ data:
                     kind: PrometheusTimeSeriesQuery
                     spec:
                       query: "kafka_lag_scaler_total_lag"
+                      minStep: "5s"
+        scalerTriggered:
+          kind: Panel
+          spec:
+            display:
+              name: "Scaler Triggered"
+            plugin:
+              kind: TimeSeriesChart
+              spec:
+                visual:
+                  display: bar
+                  connectNulls: false
+                legend:
+                  position: "bottom"
+            queries:
+              - kind: TimeSeriesQuery
+                spec:
+                  plugin:
+                    kind: PrometheusTimeSeriesQuery
+                    spec:
+                      query: "increase(kafka_lag_scaler_activations_total[30s]) > 0"
+                      minStep: "10s"
+                      seriesNameFormat: "triggered"
         consumerCount:
           kind: Panel
           spec:
@@ -87,7 +113,10 @@ data:
               name: "Consumer Count"
             plugin:
               kind: TimeSeriesChart
-              spec: {}
+              spec:
+                visual:
+                  connectNulls: true
+                  lineWidth: 1.5
             queries:
               - kind: TimeSeriesQuery
                 spec:
@@ -95,19 +124,26 @@ data:
                     kind: PrometheusTimeSeriesQuery
                     spec:
                       query: "kafka_lag_scaler_consumer_count"
+                      minStep: "5s"
       layouts:
         - kind: Grid
           spec:
             items:
               - x: 0
                 y: 0
-                width: 12
+                width: 24
                 height: 8
                 content:
                   $ref: "#/spec/panels/consumerLag"
-              - x: 12
-                y: 0
-                width: 12
+              - x: 0
+                y: 8
+                width: 24
+                height: 2
+                content:
+                  $ref: "#/spec/panels/scalerTriggered"
+              - x: 0
+                y: 10
+                width: 24
                 height: 8
                 content:
                   $ref: "#/spec/panels/consumerCount"

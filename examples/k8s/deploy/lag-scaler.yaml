@@ -20,6 +20,9 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 50051
+              name: grpc
+            - containerPort: 9090
+              name: metrics
           env:
             - name: KAFKA_BROKERS
               value: "kafka.default.svc.cluster.local:9092"
@@ -57,3 +60,8 @@ spec:
     - port: 50051
       targetPort: 50051
       protocol: TCP
+      name: grpc
+    - port: 9090
+      targetPort: 9090
+      protocol: TCP
+      name: metrics

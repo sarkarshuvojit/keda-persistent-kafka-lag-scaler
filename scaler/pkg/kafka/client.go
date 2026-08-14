@@ -27,6 +27,16 @@ func NewLagFetcher(brokers string, topic, consumerGroup string) *LagFetcher {
 	}
 }
 
+// Topic returns the topic being monitored.
+func (f *LagFetcher) Topic() string {
+	return f.topic
+}
+
+// ConsumerGroup returns the consumer group being monitored.
+func (f *LagFetcher) ConsumerGroup() string {
+	return f.consumerGroup
+}
+
 func (f *LagFetcher) FetchLag(ctx context.Context) ([]lag.LagSample, error) {
 	now := time.Now()
 
@@ -138,4 +148,40 @@ func (f *LagFetcher) FetchLag(ctx context.Context) ([]lag.LagSample, error) {
 	}
 
 	return samples, nil
+}
+
+// FetchConsumerGroupSize returns the number of active members in the consumer group.
+func (f *LagFetcher) FetchConsumerGroupSize(ctx context.Context) (int, error) {
+	coordinator, err := f.client.Metadata(ctx, &kafka.MetadataRequest{
+		Addr: f.client.Addr,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("coordinator lookup failed: %w", err)
+	}
+
+	var coordinatorAddr net.Addr
+	if len(coordinator.Brokers) > 0 {
+		coordinatorAddr = kafka.TCP(fmt.Sprintf("%s:%d", coordinator.Brokers[0].Host, coordinator.Brokers[0].Port))
+	} else {
+		coordinatorAddr = f.client.Addr
+	}
+
+	resp, err := f.client.DescribeGroups(ctx, &kafka.DescribeGroupsRequest{
+		Addr:     coordinatorAddr,
+		GroupIDs: []string{f.consumerGroup},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("describe groups failed: %w", err)
+	}
+
+	if len(resp.Groups) == 0 {
+		return 0, nil
+	}
+
+	group := resp.Groups[0]
+	if group.Error != nil {
+		return 0, fmt.Errorf("describe group error: %w", group.Error)
+	}
+
+	return len(group.Members), nil
 }

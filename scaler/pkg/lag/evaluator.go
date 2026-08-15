@@ -10,47 +10,36 @@ type EvaluationResult struct {
 	TotalCurrentLag int64
 }
 
-// EvaluatePersistence checks whether lag has exceeded the threshold continuously
-// for at least sustainDuration on any partition. It groups samples by partition
-// and finds the longest continuous stretch where ALL samples have Lag > threshold.
+// EvaluatePersistence checks whether the total lag across all partitions has
+// exceeded the threshold continuously for at least sustainDuration. Samples
+// are grouped by fetch timestamp (all partitions are scraped together in one
+// batch) and summed per batch before checking for a persistent stretch.
 func EvaluatePersistence(samples []LagSample, threshold int64, sustainDuration time.Duration) EvaluationResult {
 	if len(samples) == 0 {
 		return EvaluationResult{}
 	}
 
-	// Group samples by partition
-	byPartition := make(map[int][]LagSample)
-	latestByPartition := make(map[int]LagSample)
-
+	// Group samples by fetch timestamp and sum lag across partitions per batch
+	totalByTimestamp := make(map[time.Time]int64)
 	for _, s := range samples {
-		byPartition[s.Partition] = append(byPartition[s.Partition], s)
-		if existing, ok := latestByPartition[s.Partition]; !ok || s.Timestamp.After(existing.Timestamp) {
-			latestByPartition[s.Partition] = s
-		}
+		totalByTimestamp[s.Timestamp] += s.Lag
 	}
 
-	// Compute total current lag from latest sample per partition
+	batches := make([]LagSample, 0, len(totalByTimestamp))
+	for ts, total := range totalByTimestamp {
+		batches = append(batches, LagSample{Timestamp: ts, Lag: total})
+	}
+	sort.Slice(batches, func(i, j int) bool {
+		return batches[i].Timestamp.Before(batches[j].Timestamp)
+	})
+
 	var totalCurrentLag int64
-	for _, s := range latestByPartition {
-		totalCurrentLag += s.Lag
-	}
-
-	// Check each partition for persistent lag
-	persistent := false
-	for _, partSamples := range byPartition {
-		// Sort by timestamp
-		sort.Slice(partSamples, func(i, j int) bool {
-			return partSamples[i].Timestamp.Before(partSamples[j].Timestamp)
-		})
-
-		if hasPersistentLag(partSamples, threshold, sustainDuration) {
-			persistent = true
-			break
-		}
+	if len(batches) > 0 {
+		totalCurrentLag = batches[len(batches)-1].Lag
 	}
 
 	return EvaluationResult{
-		Persistent:      persistent,
+		Persistent:      hasPersistentLag(batches, threshold, sustainDuration),
 		TotalCurrentLag: totalCurrentLag,
 	}
 }

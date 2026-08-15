@@ -83,18 +83,67 @@ data:
           "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 },
           "fieldConfig": {
             "defaults": {
-              "custom": { "lineWidth": 1.5, "connectNulls": true }
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "linear",
+                "lineWidth": 1.5,
+                "fillOpacity": 0,
+                "pointSize": 0,
+                "connectNulls": true,
+                "spanNulls": true,
+                "axisPlacement": "auto"
+              },
+              "unit": "short"
             },
             "overrides": [
               {
                 "matcher": { "id": "byName", "options": "Consumer Count" },
-                "properties": [{ "id": "custom.axisPlacement", "value": "left" }]
+                "properties": [
+                  { "id": "custom.axisPlacement", "value": "left" },
+                  { "id": "custom.axisLabel", "value": "Consumer Count" },
+                  { "id": "custom.lineInterpolation", "value": "stepAfter" },
+                  { "id": "custom.lineWidth", "value": 2 },
+                  { "id": "custom.axisSoftMin", "value": 0 },
+                  { "id": "custom.axisSoftMax", "value": 5 },
+                  { "id": "decimals", "value": 0 },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+                ]
               },
               {
                 "matcher": { "id": "byName", "options": "Consumer Lag" },
-                "properties": [{ "id": "custom.axisPlacement", "value": "right" }]
+                "properties": [
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisLabel", "value": "Consumer Lag" },
+                  { "id": "custom.lineInterpolation", "value": "linear" },
+                  { "id": "custom.lineWidth", "value": 1.5 },
+                  { "id": "custom.fillOpacity", "value": 10 },
+                  { "id": "custom.axisSoftMin", "value": 0 },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "blue" } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "Scaling Threshold" },
+                "properties": [
+                  { "id": "custom.axisPlacement", "value": "right" },
+                  { "id": "custom.axisLabel", "value": "Consumer Lag" },
+                  { "id": "custom.axisSoftMin", "value": 0 },
+                  { "id": "custom.lineInterpolation", "value": "linear" },
+                  { "id": "custom.lineWidth", "value": 2 },
+                  { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+                  { "id": "custom.fillOpacity", "value": 0 },
+                  { "id": "custom.pointSize", "value": 0 },
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+                ]
               }
             ]
+          },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "none" },
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": ["lastNotNull"]
+            }
           },
           "targets": [
             {
@@ -107,6 +156,12 @@ data:
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "expr": "kafka_lag_scaler_total_lag",
               "legendFormat": "Consumer Lag",
+              "interval": "5s"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "prometheus" },
+              "expr": "vector(500)",
+              "legendFormat": "Scaling Threshold",
               "interval": "5s"
             }
           ]

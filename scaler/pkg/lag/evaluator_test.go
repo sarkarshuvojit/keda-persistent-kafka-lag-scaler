@@ -96,23 +96,38 @@ func TestEvaluatePersistence_GapInMiddle(t *testing.T) {
 	}
 }
 
-func TestEvaluatePersistence_MultiPartition(t *testing.T) {
+func TestEvaluatePersistence_MultiPartition_SumAboveThreshold(t *testing.T) {
 	now := time.Now()
 
-	// Partition 0: short stretch (not persistent)
-	p0 := makeSamples(0, now, 10*time.Second, 6, 1000)
-
-	// Partition 1: long stretch (persistent)
-	p1 := makeSamples(1, now, 10*time.Second, 15, 800)
+	// Each partition individually stays below threshold (300 < 500), but the
+	// summed lag across partitions (600) sustains above threshold.
+	p0 := makeSamples(0, now, 10*time.Second, 13, 300)
+	p1 := makeSamples(1, now, 10*time.Second, 13, 300)
 
 	all := append(p0, p1...)
 	result := EvaluatePersistence(all, 500, 2*time.Minute)
 	if !result.Persistent {
-		t.Error("expected persistent when at least one partition has persistent lag")
+		t.Error("expected persistent when summed lag across partitions sustains above threshold")
 	}
-	// Total current lag = latest from p0 (1000) + latest from p1 (800)
-	if result.TotalCurrentLag != 1800 {
-		t.Errorf("expected total lag 1800, got %d", result.TotalCurrentLag)
+	if result.TotalCurrentLag != 600 {
+		t.Errorf("expected total lag 600, got %d", result.TotalCurrentLag)
+	}
+}
+
+func TestEvaluatePersistence_MultiPartition_SumBelowThreshold(t *testing.T) {
+	now := time.Now()
+
+	// Neither partition, nor their sum, reaches the threshold.
+	p0 := makeSamples(0, now, 10*time.Second, 13, 100)
+	p1 := makeSamples(1, now, 10*time.Second, 13, 100)
+
+	all := append(p0, p1...)
+	result := EvaluatePersistence(all, 500, 2*time.Minute)
+	if result.Persistent {
+		t.Error("expected not persistent when summed lag stays below threshold")
+	}
+	if result.TotalCurrentLag != 200 {
+		t.Errorf("expected total lag 200, got %d", result.TotalCurrentLag)
 	}
 }
 

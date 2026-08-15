@@ -174,7 +174,7 @@ Once the consumers drain the backlog, the scaler will report `persistent=false` 
 
 ## Observability
 
-`start.sh` deploys Prometheus and Perses alongside the rest of the infra. Perses comes pre-provisioned with a "Kafka Persistent Lag Scaler" dashboard with two panels:
+`start.sh` deploys Prometheus and Grafana alongside the rest of the infra. Grafana comes pre-provisioned with a "Kafka Persistent Lag Scaler" dashboard with two panels:
 
 - **Consumer Lag** — `kafka_lag_scaler_total_lag`, the summed lag across all partitions of the monitored topic
 - **Consumer Count** — `kafka_lag_scaler_consumer_count`, the number of active members in the consumer group
@@ -182,10 +182,10 @@ Once the consumers drain the backlog, the scaler will report `persistent=false` 
 Open it with:
 
 ```bash
-minikube service perses --url
+minikube service grafana --url
 ```
 
-Perses was chosen over Grafana here for its much smaller footprint (no bundled plugin ecosystem, low memory use) — a better fit for a small demo dashboard with a single Prometheus source. The scaler itself exposes these (and per-partition lag) at `/metrics` on port `9090`.
+The scaler itself exposes these (and per-partition lag) at `/metrics` on port `9090`.
 
 ## Running Locally (outside Kubernetes)
 

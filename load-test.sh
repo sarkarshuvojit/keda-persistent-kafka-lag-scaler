@@ -16,8 +16,8 @@
 # is reachable in-cluster at http://kafka-producer/produce.
 set -euo pipefail
 
-MODERATE_COUNT=700
-HUGE_COUNT=5000
+MODERATE_COUNT=1000
+HUGE_COUNT=8000
 MESSAGE_SIZE=64
 WAIT_BETWEEN=180
 PRODUCER_URL="http://kafka-producer/produce"

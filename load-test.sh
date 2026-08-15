@@ -19,7 +19,7 @@ set -euo pipefail
 MODERATE_COUNT=1000
 HUGE_COUNT=8000
 MESSAGE_SIZE=64
-WAIT_BETWEEN=180
+WAIT_BETWEEN=60
 PRODUCER_URL="http://kafka-producer/produce"
 
 while [[ $# -gt 0 ]]; do

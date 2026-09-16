@@ -7,6 +7,7 @@ import (
 
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/kafka"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/lag"
+	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/metrics"
 )
 
 type MetricsScraper struct {
@@ -49,5 +50,13 @@ func (s *MetricsScraper) fetch(ctx context.Context) {
 	}
 
 	s.window.Add(samples...)
+	metrics.UpdateLag(samples)
 	log.Printf("Collected %d lag samples (window size: %d)", len(samples), s.window.Len())
+
+	count, err := s.fetcher.FetchConsumerGroupSize(ctx)
+	if err != nil {
+		log.Printf("Error fetching consumer group size: %v", err)
+		return
+	}
+	metrics.UpdateConsumerCount(s.fetcher.Topic(), s.fetcher.ConsumerGroup(), count)
 }

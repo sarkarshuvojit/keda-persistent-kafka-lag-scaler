@@ -4,10 +4,10 @@ A standalone gRPC service that implements [KEDA's External Scaler protocol](http
 
 ## Prerequisites
 
-- Go 1.24.4+
+- Go 1.25+
 - Docker (or minikube with `eval $(minikube docker-env)`)
 - A running Kubernetes cluster with [KEDA](https://keda.sh) installed
-- Kafka cluster accessible from the cluster (see `k8s/infra/kafka.yaml`)
+- Kafka cluster accessible from the cluster (see `examples/k8s/infra/kafka.yaml`)
 
 ## Configuration
 
@@ -21,6 +21,7 @@ A standalone gRPC service that implements [KEDA's External Scaler protocol](http
 | `SAMPLING_INTERVAL` | `samplingInterval` | Seconds between each lag poll | `10` |
 | `WINDOW_SIZE` | `windowSize` | Number of samples to keep in the sliding window | `30` |
 | `GRPC_PORT` | — | Port for the gRPC server | `50051` |
+| `METRICS_PORT` | — | Port for the Prometheus `/metrics` endpoint | `9090` |
 
 ## Step 1: Run Tests
 
@@ -37,48 +38,34 @@ ok  github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/lag  0
 
 All 7 evaluator test cases should pass (no samples, below threshold, short stretch, exact duration, long stretch, gap in middle, multi-partition).
 
-## Step 2: Build the Docker Image
+## Step 2: Start the Environment
 
-If using minikube, first point your Docker CLI to the minikube daemon:
+From the repo root, run:
+
+```bash
+./start.sh [--partitions N]
+```
+
+This builds the sample-app and scaler images against minikube's Docker daemon, applies the infra manifests (Kafka, kafbat UI, Prometheus, Grafana), explicitly creates `test-topic` with `N` partitions (default `3`, useful for testing scaling behavior across more partitions than Kafka's single-partition auto-create default), deploys the consumer/producer/lag-scaler, and applies the persistent `ScaledObject`.
+
+To do the same steps by hand instead:
 
 ```bash
 eval $(minikube docker-env)
+docker build -t kpkls:latest examples/sample-app
+docker build -t kpkls-scaler:latest scaler
+
+kubectl apply -f examples/k8s/infra/
+kubectl exec deploy/kafka -- /opt/kafka/bin/kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create --if-not-exists --topic test-topic --partitions 3 --replication-factor 1
+
+kubectl apply -f examples/k8s/deploy/deployment.yaml
+kubectl apply -f examples/k8s/deploy/producer.yaml
+kubectl apply -f examples/k8s/deploy/lag-scaler.yaml
 ```
 
-Then build:
-
-```bash
-cd scaler
-docker build -t kpkls-scaler:latest .
-```
-
-Verify the image exists:
-
-```bash
-docker images | grep kpkls-scaler
-```
-
-```
-kpkls-scaler   latest   abc123def456   5 seconds ago   15MB
-```
-
-## Step 3: Deploy the Scaler
-
-Make sure the infrastructure (Kafka) and the consumer app are already running:
-
-```bash
-kubectl apply -f k8s/infra/
-kubectl apply -f k8s/deploy/deployment.yaml
-kubectl apply -f k8s/deploy/producer.yaml
-```
-
-Now deploy the scaler:
-
-```bash
-kubectl apply -f k8s/deploy/lag-scaler.yaml
-```
-
-This creates a Deployment (1 replica) and a ClusterIP Service on port `50051`.
+The `lag-scaler` Deployment (1 replica) exposes a ClusterIP Service with the gRPC port (`50051`) and a Prometheus metrics port (`9090`).
 
 ### Verify the scaler is running
 
@@ -124,21 +111,9 @@ NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)     AGE
 lag-scaler   ClusterIP   10.96.xxx.xxx   <none>        50051/TCP   30s
 ```
 
-## Step 4: Apply the ScaledObject
+## Step 3: Verify the ScaledObject
 
-First, make sure no other ScaledObject is targeting the same consumer deployment. If the basic (threshold-based) scaler is active, remove it first:
-
-```bash
-kubectl delete -f k8s/scalers/basic/scaledobject.yaml --ignore-not-found
-```
-
-Then apply the persistent scaler:
-
-```bash
-kubectl apply -f k8s/scalers/persistent/scaledobject.yaml
-```
-
-### Verify KEDA picked it up
+`start.sh` already removes the basic (threshold-based) ScaledObject if present and applies the persistent one (`examples/k8s/scalers/persistent/scaledobject.yaml`). To check KEDA picked it up:
 
 ```bash
 kubectl get scaledobject kafka-consumer-scaler
@@ -159,7 +134,7 @@ kubectl logs -l app=keda-operator -n keda --tail=20
 
 Look for lines mentioning `kafka-consumer-scaler` without errors.
 
-## Step 5: Test It
+## Step 4: Test It
 
 ### Generate load
 
@@ -191,11 +166,26 @@ You should see:
 kubectl get pods -l app=kafka-consumer -w
 ```
 
-You should see replicas stay at 1 during the initial burst, and only scale up after the sustain duration (default 2 minutes). Compare this with the threshold-based scaler (`k8s/scalers/basic/scaledobject.yaml`) which would scale up almost immediately.
+You should see replicas stay at 1 during the initial burst, and only scale up after the sustain duration (default 2 minutes). Compare this with the threshold-based scaler (`examples/k8s/scalers/basic/scaledobject.yaml`) which would scale up almost immediately.
 
 ### After lag clears
 
 Once the consumers drain the backlog, the scaler will report `persistent=false` and `metricValue=0`. After the `cooldownPeriod` (30s), KEDA will scale back down to `minReplicaCount: 1`.
+
+## Observability
+
+`start.sh` deploys Prometheus and Grafana alongside the rest of the infra. Grafana comes pre-provisioned with a "Kafka Persistent Lag Scaler" dashboard with two panels:
+
+- **Consumer Lag** — `kafka_lag_scaler_total_lag`, the summed lag across all partitions of the monitored topic
+- **Consumer Count** — `kafka_lag_scaler_consumer_count`, the number of active members in the consumer group
+
+Open it with:
+
+```bash
+minikube service grafana --url
+```
+
+The scaler itself exposes these (and per-partition lag) at `/metrics` on port `9090`.
 
 ## Running Locally (outside Kubernetes)
 
@@ -235,12 +225,13 @@ scaler/
   pkg/
     externalscaler/             # Generated protobuf + gRPC Go code
     config/config.go            # ScalerConfig: parse from metadata or env vars
-    kafka/client.go             # LagFetcher: per-partition lag via kafka-go Client API
+    kafka/client.go             # LagFetcher: per-partition lag + consumer group size via kafka-go Client API
     lag/
       sample.go                 # LagSample type
       window.go                 # SlidingWindow: thread-safe, time-based eviction
       evaluator.go              # EvaluatePersistence: core algorithm
       evaluator_test.go         # Unit tests (7 cases)
-    scraper/scraper.go          # Background goroutine: periodic lag collection
+    metrics/metrics.go          # Prometheus gauges + /metrics HTTP handler
+    scraper/scraper.go          # Background goroutine: periodic lag + consumer count collection
     server/server.go            # gRPC ExternalScalerServer (IsActive, StreamIsActive, GetMetricSpec, GetMetrics)
 ```

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,6 +15,7 @@ import (
 	pb "github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/externalscaler"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/kafka"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/lag"
+	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/metrics"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/scraper"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/server"
 )
@@ -43,6 +45,21 @@ func main() {
 	// Start background scraper
 	go scr.Run(ctx)
 
+	// Start metrics server
+	metricsPort := os.Getenv("METRICS_PORT")
+	if metricsPort == "" {
+		metricsPort = "9090"
+	}
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", metrics.Handler())
+	metricsServer := &http.Server{Addr: ":" + metricsPort, Handler: metricsMux}
+	go func() {
+		log.Printf("Metrics server listening on :%s", metricsPort)
+		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Metrics server error: %v", err)
+		}
+	}()
+
 	// Start gRPC server
 	port := os.Getenv("GRPC_PORT")
 	if port == "" {
@@ -64,6 +81,7 @@ func main() {
 		log.Println("Received shutdown signal, stopping...")
 		cancel()
 		grpcServer.GracefulStop()
+		metricsServer.Close()
 	}()
 
 	log.Printf("gRPC server listening on :%s", port)

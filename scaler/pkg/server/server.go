@@ -9,6 +9,7 @@ import (
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/config"
 	pb "github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/externalscaler"
 	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/lag"
+	"github.com/sarkarshuvojit/keda-persistent-kafka-lag-scaler/scaler/pkg/metrics"
 )
 
 type ExternalScalerServer struct {
@@ -85,5 +86,7 @@ func (s *ExternalScalerServer) GetMetrics(ctx context.Context, req *pb.GetMetric
 
 func (s *ExternalScalerServer) evaluate() lag.EvaluationResult {
 	samples := s.window.Snapshot()
-	return lag.EvaluatePersistence(samples, s.config.LagThreshold, s.config.SustainDuration)
+	result := lag.EvaluatePersistence(samples, s.config.LagThreshold, s.config.SustainDuration)
+	metrics.UpdateActive(s.config.Topic, result.Persistent)
+	return result
 }

@@ -112,6 +112,20 @@ The static scaler wastes resources on a temporary spike. Our scaler recognizes t
 
 ---
 
+## Test Results
+
+![Consumer count vs. lag, annotated](./docs/test-results-annotated.png)
+
+This run drove two load bursts against a single consumer with `lagThreshold: 500` and `sustainSeconds: 60`:
+
+- **Moderate burst:** lag crosses the threshold but drains before 60s elapses — no scale-up.
+- **Huge burst:** lag stays above threshold past `sustainSeconds` — the scaler adds a consumer, which is already in place by the next burst.
+- Once lag clears and `cooldownPeriod` passes, KEDA scales back down.
+
+Full config used, plus what each parameter does, is in [docs/local-test.md](./docs/local-test.md).
+
+---
+
 ## Architecture
 
 ### Components

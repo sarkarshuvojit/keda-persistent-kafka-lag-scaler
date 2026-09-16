@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs -I{} echo {})",
+      "Bash(kubectl config *)",
+      "Bash(kubectl get *)",
+      "Bash(brew list *)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(minikube status *)",
+      "Bash(docker version *)",
+      "Bash(minikube start *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl wait *)",
+      "Bash(kubectl rollout *)",
+      "Bash(kubectl apply *)",
+      "Bash(kubectl run *)",
+      "Bash(kubectl exec *)",
+      "Bash(kubectl scale *)",
+      "Bash(kubectl annotate *)",
+      "Bash(go get *)",
+      "Bash(go version *)",
+      "Read(//Users/shuvojit/go/pkg/mod/golang.org/**)",
+      "Bash(go vet *)",
+      "Bash(chmod +x /Users/shuvojit/Workspaces/oss/keda-persistent-kafka-lag-scaler/start.sh)",
+      "Bash(bash -n /Users/shuvojit/Workspaces/oss/keda-persistent-kafka-lag-scaler/start.sh)",
+      "Bash(kubectl port-forward *)",
+      "Bash(kill %1)",
+      "Bash(kubectl port-forward deploy/perses 18080:8080 >/tmp/pf.log 2>&1 & *)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(command -v gh)",
+      "Bash(gh api *)",
+      "Bash(cat /tmp/pf-perses.log; echo \"---\"; kubectl get pods -l app=perses)",
+      "Read(//private/tmp/**)",
+      "Bash(pkill -f \"port-forward deploy/perses\")",
+      "Bash(pkill -f \"port-forward deploy/prometheus\")",
+      "Bash(npx --yes playwright --version)",
+      "Bash(npm init *)",
+      "Bash(npm install *)",
+      "Bash(npx playwright *)",
+      "Bash(node check.mjs)",
+      "Bash(node check2.mjs)",
+      "Bash(cat /tmp/pf-perses.log; kubectl get pods -l app=perses)"
+    ],
+    "additionalDirectories": [
+      "/private/tmp"
+    ]
+  }
+}
